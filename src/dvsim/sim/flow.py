@@ -134,6 +134,7 @@ class SimCfg(FlowCfg):
         self.post_build_cmds = []
         self.post_build_opts = []
         self.build_dir = ""
+        self.build_opts_file = ""
         self.pre_run_cmds = []
         self.post_run_cmds = []
         self.run_dir = ""
@@ -199,6 +200,13 @@ class SimCfg(FlowCfg):
         # safely switch it out now.
         if self.args.verbosity is not None:
             self.verbosity = self.args.verbosity
+
+        # Where each build records the options it compiled with, for a run step that compiles for
+        # itself rather than loading the snapshot the build produced, see
+        # CompileSim._write_build_opts_file(). The HJSON can name this path as {build_opts_file},
+        # and can also set it, to move the file or to share one between cfgs.
+        if not self.build_opts_file:
+            self.build_opts_file = "{build_dir}/build_opts.f"
 
         super()._expand()
 

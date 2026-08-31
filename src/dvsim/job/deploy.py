@@ -431,6 +431,7 @@ class CompileSim(Deploy):
         self.build_cmd: str = ""
         self.build_dir: str = ""
         self.build_opts: list[str] = []
+        self.build_opts_file: str = ""
         self.post_build_cmds: list[str] = []
         self.build_fail_patterns: list[str] = []
         self.build_pass_patterns: list[str] = []
@@ -485,6 +486,7 @@ class CompileSim(Deploy):
         self.mandatory_misc_attrs.update(
             {
                 "build_fail_patterns": False,
+                "build_opts_file": False,
                 "build_pass_patterns": False,
                 "build_timeout_mins": False,
                 "cov_db_dir": False,
@@ -509,6 +511,25 @@ class CompileSim(Deploy):
         if self.sim_cfg.args.build_timeout_mins is not None:
             self.build_timeout_mins = self.sim_cfg.args.build_timeout_mins
 
+    def _write_build_opts_file(self) -> None:
+        """Record the options this build used, in the build directory.
+
+        A run step may compile and elaborate for itself instead of loading the snapshot the build
+        produced. Such a run has to compile the way the build did. Build modes and individual cfgs
+        each contribute their own defines, include paths and libraries, and a run compiled with a
+        different set would simulate a differently configured design.
+
+        The merged option list exists only here, so write it out as a file the tools accept in
+        place of command line options. The run step names that file with {build_opts_file}, which
+        SimCfg sets and the HJson may override.
+        """
+        opts_file = Path(self.build_opts_file)
+        opts_file.parent.mkdir(parents=True, exist_ok=True)
+        opts_file.write_text(
+            "".join(f"{opt.strip()}\n" for opt in self.build_opts if opt.strip()),
+            encoding="UTF-8",
+        )
+
     def pre_launch(self) -> Callable[[], None]:
         """Get pre-launch callback."""
 
@@ -517,6 +538,8 @@ class CompileSim(Deploy):
             # Delete old coverage database directories before building again. We
             # need to do this because the build directory is not 'renewed'.
             rm_path(Path(self.cov_db_dir))
+
+            self._write_build_opts_file()
 
         return callback
 
